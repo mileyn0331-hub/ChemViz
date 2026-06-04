@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChemViz</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23080c10'/><polygon points='16,2 28,9 28,23 16,30 4,23 4,9' fill='none' stroke='%2300e5ff' stroke-width='1.5'/><circle cx='16' cy='16' r='3' fill='%2300e5ff'/><line x1='16' y1='2' x2='16' y2='13' stroke='%2300e5ff' stroke-width='1' opacity='0.5'/><line x1='28' y1='9' x2='18.6' y2='14.5' stroke='%237b61ff' stroke-width='1' opacity='0.5'/><line x1='28' y1='23' x2='18.6' y2='17.5' stroke='%2339ff7e' stroke-width='1' opacity='0.5'/></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://3dmol.org/build/3Dmol-min.js"></script>
+<style>
+:root{--bg:#080c10;--surface:#0d1318;--surface2:#121a22;--border:#1e2d3a;--border2:#243545;--accent:#00e5ff;--accent2:#7b61ff;--accent3:#39ff7e;--text:#c8dde8;--text-dim:#5a7a8a;--text-mute:#2e4555;--danger:#ff4d6a;--mono:'Space Mono',monospace;--sans:'Syne',sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);display:flex;flex-direction:column}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,229,255,.012) 2px,rgba(0,229,255,.012) 4px);pointer-events:none;z-index:1000}
+header{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--border);background:rgba(8,12,16,.97);backdrop-filter:blur(12px);flex-shrink:0;z-index:100;gap:10px}
+.logo{display:flex;align-items:center;gap:8px;font-family:var(--sans);font-weight:800;font-size:18px;color:#fff;flex-shrink:0}
+.logo span{color:var(--accent)}
+.logo svg{width:26px;height:26px}
+.header-center{display:flex;gap:3px;border:1px solid var(--border2);border-radius:7px;overflow:hidden}
+.page-btn{padding:6px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;background:transparent;border:none;color:var(--text-dim);cursor:pointer;transition:all .15s;text-transform:uppercase;white-space:nowrap}
+.page-btn.active{background:var(--accent);color:#000;font-weight:700}
+.header-right{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.sub-mode-toggle{display:flex;border:1px solid var(--border2);border-radius:6px;overflow:hidden}
+.mode-btn{padding:5px 11px;font-family:var(--mono);font-size:10px;letter-spacing:.07em;background:transparent;border:none;color:var(--text-dim);cursor:pointer;transition:all .15s;text-transform:uppercase}
+.mode-btn.active{background:var(--accent2);color:#fff;font-weight:700}
+.lang-toggle{display:flex;border:1px solid var(--border2);border-radius:6px;overflow:hidden}
+.lang-btn{padding:5px 9px;font-family:var(--mono);font-size:10px;background:transparent;border:none;color:var(--text-dim);cursor:pointer;transition:all .15s;font-weight:700}
+.lang-btn.active{background:var(--surface2);color:var(--accent3)}
+.history-btn{padding:5px 11px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text-dim);font-family:var(--mono);font-size:10px;cursor:pointer;transition:all .15s;text-transform:uppercase;white-space:nowrap}
+.history-btn:hover{border-color:var(--accent);color:var(--accent)}
+.page{display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden}
+.page.active{display:flex}
+/* MOLECULE */
+.search-section{padding:14px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
+.search-label{font-size:10px;letter-spacing:.14em;color:var(--text-mute);text-transform:uppercase;margin-bottom:7px}
+.search-row{display:flex;gap:7px}
+.search-wrap{flex:1;position:relative;min-width:0}
+.search-prefix{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--accent);font-size:13px;pointer-events:none;font-weight:700}
+#formula-input{width:100%;padding:10px 10px 10px 28px;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;color:#fff;font-family:var(--mono);font-size:14px;letter-spacing:.04em;outline:none;transition:border-color .2s,box-shadow .2s}
+#formula-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,255,.08)}
+#formula-input::placeholder{color:var(--text-mute)}
+.search-btn{padding:0 16px;background:var(--accent);border:none;border-radius:7px;color:#000;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.search-btn:hover{background:#33ecff;box-shadow:0 0 14px rgba(0,229,255,.3)}
+.quick-examples{display:flex;gap:5px;margin-top:9px;flex-wrap:wrap;align-items:center}
+.eg-label{font-size:9px;color:var(--text-mute);letter-spacing:.1em;text-transform:uppercase}
+.example-chip{padding:3px 8px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--text-dim);font-family:var(--mono);font-size:10px;cursor:pointer;transition:all .15s}
+.example-chip:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.04)}
+.content{display:grid;grid-template-columns:1fr 274px;flex:1;min-height:0;overflow:hidden}
+.viewer-panel{position:relative;border-right:1px solid var(--border);background:var(--surface);overflow:hidden;display:flex;flex-direction:column;}
+#viewer-container{position:absolute;inset:0;width:100%;height:100%;}
+.viewer-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;flex-direction:column;pointer-events:none}
+.placeholder-text{font-size:11px;color:var(--text-mute);letter-spacing:.04em;text-align:center;margin-top:10px;line-height:1.7}
+.viewer-controls{position:absolute;bottom:12px;left:12px;display:flex;gap:5px}
+.ctrl-btn{width:28px;height:28px;background:rgba(13,19,24,.88);border:1px solid var(--border2);border-radius:5px;color:var(--text-dim);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;backdrop-filter:blur(6px)}
+.ctrl-btn:hover{border-color:var(--accent);color:var(--accent)}
+.style-selector{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:3px}
+.style-btn{padding:4px 8px;background:rgba(13,19,24,.88);border:1px solid var(--border2);border-radius:4px;color:var(--text-dim);font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:all .15s;backdrop-filter:blur(6px)}
+.style-btn.active,.style-btn:hover{border-color:var(--accent2);color:var(--accent2);background:rgba(123,97,255,.08)}
+.loading-state{position:absolute;inset:0;background:var(--surface);display:none;align-items:center;justify-content:center;flex-direction:column;gap:9px;z-index:10}
+.loading-state.active{display:flex}
+.loader{width:34px;height:34px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:10px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase}
+.error-state{position:absolute;inset:0;background:var(--surface);display:none;align-items:center;justify-content:center;flex-direction:column;gap:8px;z-index:10}
+.error-state.active{display:flex}
+.error-msg{font-size:11px;color:var(--danger);text-align:center;padding:0 28px;line-height:1.6}
+/* INFO PANEL - overflow fixed */
+.info-panel{background:var(--surface);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;min-width:0;width:274px;flex-shrink:0}
+.info-section{padding:14px;border-bottom:1px solid var(--border);min-width:0;overflow:hidden}
+.info-section-title{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-mute);margin-bottom:11px}
+.mol-name{font-family:var(--sans);font-size:17px;font-weight:800;color:#fff;margin-bottom:3px;line-height:1.3;word-break:break-word;overflow-wrap:anywhere;white-space:normal;max-width:100%}
+.mol-formula-display{font-size:11px;color:var(--accent);word-break:break-all;overflow-wrap:anywhere;max-width:100%}
+.mol-formula-display sub{font-size:9px}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:7px 9px;min-width:0;overflow:hidden}
+.stat-label{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-mute);margin-bottom:3px}
+.stat-value{font-size:13px;color:var(--accent3);font-weight:700;word-break:break-all;overflow-wrap:anywhere}
+.stat-unit{font-size:9px;color:var(--text-dim);margin-left:2px;font-weight:400}
+.elements-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.element-tag{display:flex;align-items:center;gap:4px;padding:3px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;font-size:10px}
+.element-symbol{color:#fff;font-weight:700}
+.element-count{color:var(--text-dim);font-size:9px}
+.element-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.info-placeholder{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;padding:28px 14px;text-align:center}
+/* REACTION */
+/* reaction-section managed above */
+.reaction-viewers{display:flex;align-items:center;height:280px;border-bottom:1px solid var(--border)}
+.reaction-half{flex:1;height:100%;position:relative;overflow:hidden}
+.reaction-half-label{position:absolute;top:7px;left:7px;font-size:9px;letter-spacing:.1em;text-transform:uppercase;z-index:5;padding:2px 6px;border-radius:3px;pointer-events:none}
+.reactant-label{background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.2);color:var(--accent)}
+.product-label{background:rgba(57,255,126,.1);border:1px solid rgba(57,255,126,.2);color:var(--accent3)}
+.reaction-arrow{width:50px;flex-shrink:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;font-size:18px;color:var(--accent2);border-left:1px solid var(--border);border-right:1px solid var(--border);background:var(--surface2)}
+.reaction-arrow-text{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-mute)}
+.reaction-input-area{padding:14px 20px;border-bottom:1px solid var(--border);display:none;flex-shrink:0}
+.reaction-input-area.active{display:block}
+#reaction-input{width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;color:#fff;font-family:var(--mono);font-size:13px;letter-spacing:.04em;outline:none;transition:border-color .2s}
+#reaction-input:focus{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(123,97,255,.08)}
+#reaction-input::placeholder{color:var(--text-mute)}
+.reaction-hint{font-size:9px;color:var(--text-mute);margin-top:5px}.reaction-hint span{color:var(--accent2)}
+.recent-bar{padding:7px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:7px;flex-wrap:wrap;background:rgba(13,19,24,.8);flex-shrink:0}
+.recent-label{font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--text-mute);white-space:nowrap}
+.recent-chip{padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--accent);font-family:var(--mono);font-size:9px;cursor:pointer;transition:all .15s}
+.recent-chip:hover{border-color:var(--accent);background:rgba(0,229,255,.06)}
+.tooltip-container{position:relative}
+.history-dropdown{position:fixed;top:52px;right:20px;width:250px;background:var(--surface2);border:1px solid var(--border2);border-radius:9px;box-shadow:0 8px 40px rgba(0,0,0,.7);z-index:200;display:none;overflow:hidden}
+.history-dropdown.open{display:block}
+.history-header{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;border-bottom:1px solid var(--border)}
+.history-title{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim)}
+.clear-btn{font-size:9px;color:var(--danger);background:none;border:none;cursor:pointer;font-family:var(--mono)}
+.history-list{max-height:260px;overflow-y:auto}
+.history-item{display:flex;align-items:center;justify-content:space-between;padding:8px 13px;cursor:pointer;transition:background .1s;border-bottom:1px solid var(--border)}
+.history-item:hover{background:rgba(0,229,255,.04)}
+.history-item:last-child{border-bottom:none}
+.history-formula{font-size:11px;color:var(--accent)}
+.history-name{font-size:9px;color:var(--text-dim);margin-top:1px;word-break:break-all;overflow-wrap:anywhere;max-width:160px}
+.history-time{font-size:8px;color:var(--text-mute);white-space:nowrap;margin-left:5px}
+.history-empty{padding:18px;text-align:center;font-size:10px;color:var(--text-mute)}
+/* PERIODIC TABLE */
+#page-periodic{overflow:hidden}
+.pt-layout{display:grid;grid-template-columns:1fr 250px;flex:1;min-height:0;overflow:hidden}
+.pt-main{overflow:auto;padding:12px 14px;min-width:0}
+.pt-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.pt-toolbar-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-mute)}
+.color-mode-select{background:var(--surface2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 7px;outline:none;cursor:pointer}
+.pt-legend{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.legend-item{display:flex;align-items:center;gap:3px;font-size:8px;color:var(--text-dim)}
+.legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.pt-grid{display:grid;grid-template-columns:repeat(18,1fr);gap:2px;min-width:640px;outline:none}
+.pt-cell{aspect-ratio:1;border-radius:3px;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid transparent;transition:transform .1s,border-color .1s,box-shadow .1s;padding:1px}
+.pt-cell:hover,.pt-cell.focused{transform:scale(1.14);z-index:10;border-color:rgba(255,255,255,.5)!important;box-shadow:0 0 10px rgba(255,255,255,.18)}
+.pt-cell.focused{box-shadow:0 0 0 2px var(--accent),0 0 14px rgba(0,229,255,.3)!important;border-color:var(--accent)!important}
+.pt-cell.empty{background:transparent!important;border:none!important;cursor:default;pointer-events:none}
+.pt-cell .el-num{font-size:5.5px;color:rgba(255,255,255,.5);line-height:1;align-self:flex-start;padding-left:2px}
+.pt-cell .el-sym{font-size:12px;font-weight:700;color:#fff;line-height:1;font-family:var(--sans)}
+.pt-cell .el-name-sm{font-size:5px;color:rgba(255,255,255,.65);line-height:1;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 1px}
+.el-info-panel{background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;width:250px;flex-shrink:0}
+.el-info-placeholder{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;padding:20px;text-align:center;color:var(--text-mute);font-size:10px;line-height:1.6}
+.el-info-content{display:none}
+.el-props{padding:0 13px 13px}
+.el-prop-row{display:flex;justify-content:space-between;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--border);gap:6px}
+.el-prop-row:last-child{border-bottom:none}
+.el-prop-key{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute);flex-shrink:0}
+.el-prop-val{font-size:10px;color:var(--text);text-align:right;word-break:break-word;max-width:150px}
+.el-prop-val.accent{color:var(--accent3)}
+.el-action-btn{margin:0 13px 13px;padding:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:all .15s;width:calc(100% - 26px)}
+.el-action-btn:hover{background:rgba(0,229,255,.08);border-color:var(--accent)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.animate-in{animation:fadeIn .25s ease forwards}
+.status-dot{width:5px;height:5px;border-radius:50%;background:var(--accent3);box-shadow:0 0 5px var(--accent3);animation:pulse 2s infinite;display:inline-block;margin-right:4px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── REACTION STAGE (injected fix) ── */
+#reaction-section{
+  display:none;
+  flex-direction:column;
+  background:var(--surface);
+  width:100%;height:100%;
+  overflow:hidden;
+}
+#reaction-section.active{display:flex}
+.rxn-stage{
+  flex:1;min-height:0;overflow-y:scroll;overflow-x:hidden;
+  display:flex;flex-direction:column;align-items:center;
+  padding:0 0 40px;gap:0;
+  -webkit-overflow-scrolling:touch;
+}
+.rxn-eq-bar{
+  display:flex;align-items:center;justify-content:flex-start;
+  flex-wrap:wrap;gap:6px;flex-shrink:0;
+  background:transparent;border:none;
+  padding:14px 24px 6px;margin-bottom:4px;
+  width:100%;max-width:900px;
+}
+.rxn-eq-term{font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:.04em;}
+.rxn-eq-term sub{font-size:10px;font-weight:700}
+.rxn-eq-coeff{color:var(--accent2)}
+.rxn-eq-r{color:var(--accent)}
+.rxn-eq-p{color:var(--accent3)}
+.rxn-eq-plus{color:var(--text-mute);font-size:15px;padding:0 2px}
+.rxn-eq-arrow{color:var(--accent2);font-size:17px;padding:0 6px;animation:arrowPulse 1.5s ease-in-out infinite;}
+@keyframes arrowPulse{0%,100%{opacity:1;transform:translateX(0)}50%{opacity:.6;transform:translateX(3px)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 32 32" fill="none"><polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="none" stroke="#00e5ff" stroke-width="1.5"/><circle cx="16" cy="16" r="3" fill="#00e5ff"/><line x1="16" y1="2" x2="16" y2="13" stroke="#00e5ff" stroke-width="1" opacity="0.5"/><line x1="28" y1="9" x2="18.6" y2="14.5" stroke="#7b61ff" stroke-width="1" opacity="0.5"/><line x1="28" y1="23" x2="18.6" y2="17.5" stroke="#39ff7e" stroke-width="1" opacity="0.5"/></svg>
+    Chem<span>Viz</span>
+  </div>
+  <div class="header-center">
+    <button class="page-btn active" id="btn-mol" onclick="switchPage('mol')" data-i="tabMol">분자 뷰어</button>
+    <button class="page-btn" id="btn-periodic" onclick="switchPage('periodic')" data-i="tabPeriodic">주기율표</button>
+  </div>
+  <div class="header-right">
+    <div class="sub-mode-toggle" id="sub-mode-toggle">
+      <button class="mode-btn active" id="mol-mode-btn" onclick="setMode('molecule')" data-i="subMol">분자</button>
+      <button class="mode-btn" id="rxn-mode-btn" onclick="setMode('reaction')" data-i="subRxn">반응식</button>
+    </div>
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="lang-en" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" id="lang-ko" onclick="setLang('ko')">KO</button>
+    </div>
+    <div class="tooltip-container">
+      <button class="history-btn" id="history-btn-el" onclick="toggleHistory()">기록 ▾</button>
+      <div class="history-dropdown" id="history-dropdown">
+        <div class="history-header">
+          <span class="history-title" data-i="histTitle">검색 기록</span>
+          <button class="clear-btn" onclick="clearHistory()" data-i="clearAll">전체 삭제</button>
+        </div>
+        <div class="history-list" id="history-list"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- MOLECULE PAGE -->
+<div class="page active" id="page-mol">
+  <div class="search-section" id="mol-search">
+    <div class="search-label" data-i="molInputLabel">// 분자식 입력</div>
+    <div class="search-row">
+      <div class="search-wrap">
+        <span class="search-prefix">⬡</span>
+        <input type="text" id="formula-input" placeholder="예: H2O, C6H12O6, NaCl, Fe2O3" autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+      <button class="search-btn" onclick="searchMolecule()" data-i="analyzeBtn">분석 →</button>
+    </div>
+    <div class="quick-examples">
+      <span class="eg-label" data-i="eg">예시</span>
+      <button class="example-chip" onclick="loadExample('H2O')">H₂O</button>
+      <button class="example-chip" onclick="loadExample('C6H12O6')">C₆H₁₂O₆</button>
+      <button class="example-chip" onclick="loadExample('NaCl')">NaCl</button>
+      <button class="example-chip" onclick="loadExample('NH3')">NH₃</button>
+      <button class="example-chip" onclick="loadExample('C2H5OH')">C₂H₅OH</button>
+      <button class="example-chip" onclick="loadExample('CO2')">CO₂</button>
+    </div>
+  </div>
+  <div class="reaction-input-area" id="rxn-search">
+    <div class="search-label" data-i="rxnInputLabel">// 반응식 입력</div>
+    <div class="search-row">
+      <div class="search-wrap">
+        <span class="search-prefix">⇌</span>
+        <input type="text" id="reaction-input" placeholder="예: 2H2 + O2 → 2H2O" autocomplete="off" style="padding-left:28px">
+      </div>
+      <button class="search-btn" onclick="searchReaction()" data-i="analyzeBtn">분석 →</button>
+    </div>
+    <div class="reaction-hint" data-i="rxnHint">반응물과 생성물을 <span>+</span>로 연결, <span>→</span> 또는 <span>&gt;</span>로 구분</div>
+  </div>
+  <div class="content">
+    <div class="viewer-panel">
+      <div id="viewer-container"></div>
+      <div id="reaction-section">
+        <div class="rxn-stage" id="rxn-stage">
+          <div class="rxn-eq-bar" id="rxn-eq-bar"></div>
+          <div id="rxn-mol-grid" style="width:100%;display:flex;flex-direction:column;align-items:center;"></div>
+        </div>
+      </div>
+      <div class="loading-state" id="loading"><div class="loader"></div><div class="loading-text" data-i="loading">구조 데이터 로딩 중...</div></div>
+      <div class="error-state" id="error-state"><div style="font-size:26px">⚠</div><div class="error-msg" id="error-msg"></div></div>
+      <div class="viewer-overlay" id="placeholder">
+        <div style="opacity:.1"><svg width="60" height="60" viewBox="0 0 80 80" fill="none"><polygon points="40,5 70,22.5 70,57.5 40,75 10,57.5 10,22.5" fill="none" stroke="#00e5ff" stroke-width="2"/><polygon points="40,18 57,28 57,48 40,58 23,48 23,28" fill="none" stroke="#7b61ff" stroke-width="1.5"/><circle cx="40" cy="38" r="4" fill="#00e5ff"/></svg></div>
+        <div class="placeholder-text" data-i="placeholder">분자식을 입력하면<br>3D 구조가 표시됩니다</div>
+      </div>
+      <div class="viewer-controls" id="viewer-controls" style="display:none">
+        <button class="ctrl-btn" title="재설정" onclick="resetView()">⊙</button>
+        <button class="ctrl-btn" title="회전" onclick="toggleSpin()" id="spin-btn">↻</button>
+      </div>
+      <div class="style-selector" id="style-selector" style="display:none">
+        <button class="style-btn active" onclick="setStyle('stick')" data-style="stick">Stick</button>
+        <button class="style-btn" onclick="setStyle('sphere')" data-style="sphere">Sphere</button>
+        <button class="style-btn" onclick="setStyle('line')" data-style="line">Wire</button>
+        <button class="style-btn" onclick="setStyle('skeletal')" data-style="skeletal">2D</button>
+      </div>
+    </div>
+    <div class="info-panel" id="info-panel">
+      <div class="info-placeholder" id="info-placeholder">
+        <svg width="30" height="30" viewBox="0 0 36 36" fill="none"><polygon points="18,2 32,10 32,26 18,34 4,26 4,10" fill="none" stroke="#2e4555" stroke-width="1.5"/><circle cx="18" cy="18" r="3" fill="#2e4555"/></svg>
+        <div style="color:var(--text-mute);font-size:10px;margin-top:5px" data-i="noMolInfo">분자 정보 없음</div>
+      </div>
+      <div id="mol-info" style="display:none"></div>
+    </div>
+  </div>
+  <div class="recent-bar">
+    <span class="recent-label" data-i="recent">최근</span>
+    <div id="recent-chips"></div>
+  </div>
+</div>
+
+<!-- PERIODIC TABLE PAGE -->
+<div class="page" id="page-periodic">
+  <div class="pt-layout">
+    <div class="pt-main">
+      <div class="pt-toolbar">
+        <span class="pt-toolbar-label" data-i="colorMode">색상 모드</span>
+        <select class="color-mode-select" id="color-mode-select" onchange="applyColorMode()">
+          <option value="category" data-i-opt="cmCategory">원소 분류</option>
+          <option value="state" data-i-opt="cmState">상온 상태</option>
+          <option value="abundance" data-i-opt="cmAbundance">지각 존재</option>
+          <option value="discovery" data-i-opt="cmDiscovery">발견 시기</option>
+          <option value="radioactive" data-i-opt="cmRadioactive">방사성 여부</option>
+        </select>
+      </div>
+      <div class="pt-legend" id="pt-legend"></div>
+      <div class="pt-grid" id="pt-grid" tabindex="0"></div>
+    </div>
+    <div class="el-info-panel">
+      <div class="el-info-placeholder" id="el-info-placeholder">
+        <svg width="38" height="38" viewBox="0 0 40 40" fill="none"><polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="#2e4555" stroke-width="1.5"/><text x="20" y="26" text-anchor="middle" font-size="15" fill="#2e4555" font-weight="bold">?</text></svg>
+        <div data-i="hoverHint">원소에 마우스를 올리거나<br>방향키로 선택하세요</div>
+      </div>
+      <div class="el-info-content" id="el-info-content"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const I18N={
+ko:{
+  molInputLabel:'// 분자식 입력',analyzeBtn:'분석 →',eg:'예시',
+  rxnInputLabel:'// 반응식 입력',rxnHint:'반응물과 생성물을 + 로 연결, → 또는 > 로 구분',
+  reactant:'반응물',product:'생성물',reactionWord:'반응',
+  loading:'구조 데이터 로딩 중...',placeholder:'분자식을 입력하면\n3D 구조가 표시됩니다',
+  noMolInfo:'분자 정보 없음',recent:'최근',
+  histTitle:'검색 기록',clearAll:'전체 삭제',histEmpty:'검색 기록 없음',
+  colorMode:'색상 모드',
+  cmCategory:'원소 분류',cmState:'상온 상태',cmAbundance:'지각 존재',cmDiscovery:'발견 시기',cmRadioactive:'방사성 여부',
+  hoverHint:'원소에 마우스를 올리거나\n방향키로 선택하세요',
+  idSection:'// 분자 식별',physSection:'// 물리적 성질',elemSection:'// 원소 구성',iupacSection:'// IUPAC 명명',
+  mw:'분자량',elemCount:'원소 수',atomCount:'총 원자 수',molUnit:'종',atomUnit:'개',
+  elNumber:'원자 번호',elWeight:'원자량',elCategory:'분류',elState:'상태(상온)',
+  elConfig:'전자 배치',elGroup:'족',elPeriod:'주기',elAbundance:'지각 존재도',elDiscovery:'발견',elRadioactive:'방사성',
+  goToViewer:'분자 뷰어에서 검색',
+  errNotFound:'분자를 찾을 수 없습니다. 분자식을 확인해주세요.',
+  errNoStruct:'3D 구조 데이터를 가져올 수 없습니다.',
+  errRxnArrow:'반응식에 → 또는 > 를 포함해주세요.',
+  justNow:'방금',
+  tabMol:'분자 뷰어',tabPeriodic:'주기율표',
+  subMol:'분자',subRxn:'반응식',histBtn:'기록',
+},
+en:{
+  molInputLabel:'// Molecular Formula',analyzeBtn:'Analyze →',eg:'e.g.',
+  rxnInputLabel:'// Reaction Equation',rxnHint:'Connect with +, separate sides with → or >',
+  reactant:'Reactants',product:'Products',reactionWord:'Reaction',
+  loading:'Loading structure...',placeholder:'Enter a formula to\nview the 3D structure',
+  noMolInfo:'No molecule info',recent:'Recent',
+  histTitle:'History',clearAll:'Clear All',histEmpty:'No history',
+  colorMode:'Color Mode',
+  cmCategory:'Element Category',cmState:'Physical State',cmAbundance:'Crustal Abundance',cmDiscovery:'Discovery Era',cmRadioactive:'Radioactivity',
+  hoverHint:'Hover over an element\nor use arrow keys',
+  idSection:'// Identification',physSection:'// Physical Properties',elemSection:'// Composition',iupacSection:'// IUPAC Name',
+  mw:'Mol. Weight',elemCount:'Elements',atomCount:'Total Atoms',molUnit:'types',atomUnit:'atoms',
+  elNumber:'Atomic No.',elWeight:'Atomic Weight',elCategory:'Category',elState:'State (RT)',
+  elConfig:'Electron Config',elGroup:'Group',elPeriod:'Period',elAbundance:'Crustal Abund.',elDiscovery:'Discovered',elRadioactive:'Radioactive',
+  goToViewer:'Search in Molecule Viewer',
+  errNotFound:'Molecule not found. Please check the formula.',
+  errNoStruct:'Could not load 3D structure data.',
+  errRxnArrow:'Please include → or > in the reaction.',
+  justNow:'just now',
+  tabMol:'Molecule Viewer',tabPeriodic:'Periodic Table',
+  subMol:'Molecule',subRxn:'Reaction',histBtn:'History',
+}};
+let lang=localStorage.getItem('chemviz_lang')||'en';
+function t(k){return(I18N[lang]||I18N.ko)[k]||k}
+function setLang(l){
+  lang=l;localStorage.setItem('chemviz_lang',l);
+  document.getElementById('lang-ko').classList.toggle('active',l==='ko');
+  document.getElementById('lang-en').classList.toggle('active',l==='en');
+  applyI18n();renderPeriodicTable();applyColorMode();
+  if(lastProps)showMolInfo(lastProps,lastRaw);
+}
+function applyI18n(){
+  document.querySelectorAll('[data-i]').forEach(el=>{const k=el.dataset.i;if(I18N[lang][k]!==undefined)el.textContent=I18N[lang][k];});
+  document.querySelectorAll('[data-i-opt]').forEach(el=>{const k=el.dataset.iOpt;if(I18N[lang][k]!==undefined)el.textContent=I18N[lang][k];});
+  const fi=document.getElementById('formula-input');
+  if(fi)fi.placeholder=lang==='ko'?'예: H2O, C6H12O6, NaCl, Fe2O3':'e.g. H2O, C6H12O6, NaCl, Fe2O3';
+  const ri=document.getElementById('reaction-input');
+  if(ri)ri.placeholder=lang==='ko'?'예: 2H2 + O2 → 2H2O':'e.g. 2H2 + O2 → 2H2O';
+  const hb=document.getElementById('history-btn-el');
+  if(hb)hb.textContent=(lang==='ko'?'기록':'History')+' ▾';
+}
+
+let currentPage='mol';
+function switchPage(p){
+  currentPage=p;
+  document.getElementById('page-mol').classList.toggle('active',p==='mol');
+  document.getElementById('page-periodic').classList.toggle('active',p==='periodic');
+  document.getElementById('btn-mol').classList.toggle('active',p==='mol');
+  document.getElementById('btn-periodic').classList.toggle('active',p==='periodic');
+  document.getElementById('sub-mode-toggle').style.display=p==='mol'?'flex':'none';
+  if(p==='periodic')document.getElementById('pt-grid').focus();
+  // Restore state after page switch
+  if(p==='mol'){
+    setTimeout(function(){
+      if(currentMode==='reaction'&&lastRxnState){
+        buildEqBar(lastRxnState.reactants,lastRxnState.products);
+        buildMolGrid(lastRxnState.reactants,lastRxnState.products);
+        renderRxnInfoPanel(lastRxnState.reactants,lastRxnState.products,lastRxnState.sdfs);
+      } else if(currentMode==='molecule'&&lastProps){
+        showMolInfo(lastProps,lastRaw);
+        if(lastSdf){
+          if(viewer&&!document.getElementById('viewer-container').dataset.skeletal){
+            viewer.resize();viewer.render();
+          } else {
+            renderMolecule(lastSdf,true);
+          }
+        }
+      }
+    },80);
+  }
+}
+
+let viewer=null,viewerR=null,viewerP=null;
+let currentStyle='stick',isSpinning=false,currentMode='molecule';
+let history=JSON.parse(localStorage.getItem('chemviz_history')||'[]');
+let lastProps=null,lastRaw='';
+let lastRxnState=null;
+const elementColors={H:'#e0e0e0',C:'#909090',N:'#3050f8',O:'#ff0d0d',F:'#90e050',Cl:'#1ff01f',Br:'#a62929',I:'#940094',S:'#ffff30',P:'#ff8000',Na:'#ab5cf2',K:'#8f40d4',Ca:'#3dff00',Mg:'#8aff00',Fe:'#e06633',Cu:'#c88033',Zn:'#7d80b0',default:'#ff69b4'};
+function getElementColor(s){return elementColors[s]||elementColors.default}
+
+function setMode(mode){
+  currentMode=mode;
+  document.getElementById('mol-mode-btn').classList.toggle('active',mode==='molecule');
+  document.getElementById('rxn-mode-btn').classList.toggle('active',mode==='reaction');
+  document.getElementById('mol-search').style.display=mode==='molecule'?'block':'none';
+  document.getElementById('rxn-search').classList.toggle('active',mode==='reaction');
+  // Explicitly show/hide both panels
+  const rxnSec=document.getElementById('reaction-section');
+  const viewerCont=document.getElementById('viewer-container');
+  const viewerControls=document.getElementById('viewer-controls');
+  const styleSel=document.getElementById('style-selector');
+  const placeholder=document.getElementById('placeholder');
+  if(mode==='molecule'){
+    rxnSec.style.display='none';
+    rxnSec.classList.remove('active');
+    viewerCont.style.display='block';
+    if(lastSdf){
+      viewerControls.style.display='flex';
+      styleSel.style.display='flex';
+      placeholder.style.display='none';
+      if(viewer&&!viewerCont.dataset.skeletal){
+        setTimeout(function(){viewer.resize();viewer.render();},50);
+      }
+    }
+  } else {
+    rxnSec.style.display='flex';
+    rxnSec.classList.add('active');
+    viewerCont.style.display='none';
+    viewerControls.style.display='none';
+    styleSel.style.display='none';
+    placeholder.style.display='none';
+  }
+  if(mode==='reaction'){
+    // Hide molecule-only controls but DON'T wipe info panel
+    document.getElementById('viewer-controls').style.display='none';
+    document.getElementById('style-selector').style.display='none';
+    // Restore reaction info panel if we have saved state
+    if(lastRxnState){
+      setTimeout(function(){
+        buildEqBar(lastRxnState.reactants,lastRxnState.products);
+        buildMolGrid(lastRxnState.reactants,lastRxnState.products);
+        renderRxnInfoPanel(lastRxnState.reactants,lastRxnState.products,lastRxnState.sdfs);
+      },80);
+    } else {
+      // No reaction yet — show placeholder in info panel
+      if(!lastProps){
+        document.getElementById('info-placeholder').style.display='flex';
+        document.getElementById('mol-info').style.display='none';
+      }
+    }
+  } else {
+    // Switching to molecule mode — restore mol info if we have it
+    if(lastProps){
+      showMolInfo(lastProps,lastRaw);
+    } else {
+      document.getElementById('info-placeholder').style.display='flex';
+      document.getElementById('mol-info').style.display='none';
+      document.getElementById('placeholder').style.display='flex';
+    }
+  }
+}
+function loadExample(f){document.getElementById('formula-input').value=f;searchMolecule();}
+document.getElementById('formula-input').addEventListener('keydown',e=>{if(e.key==='Enter')searchMolecule();});
+document.getElementById('reaction-input').addEventListener('keydown',e=>{if(e.key==='Enter')searchReaction();});
+
+async function searchMolecule(formula){
+  const raw=(formula||document.getElementById('formula-input').value).trim();
+  if(!raw)return;
+  showLoading();hideError();hidePlaceholder();
+  try{
+    const cid=await getCID(raw);
+    if(!cid)throw new Error(t('errNotFound'));
+    lastCid=cid;
+    const[sdfData,props]=await Promise.all([fetch3DSDF(cid),fetchMoleculeProps(cid)]);
+    if(!sdfData)throw new Error(t('errNoStruct'));
+    renderMolecule(sdfData);showMolInfo(props,raw);
+    addToHistory(raw,props.name||raw);updateRecentChips();
+  }catch(err){showError(err.message);}
+  finally{hideLoading();}
+}
+async function getCID(formula){
+  const opts={mode:'cors'};
+  const tries=[
+    `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/fastformula/${encodeURIComponent(formula)}/cids/JSON`,
+    `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/formula/${encodeURIComponent(formula)}/cids/JSON`,
+    `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(formula)}/cids/JSON`,
+  ];
+  for(const url of tries){
+    try{
+      const r=await fetch(url,opts);if(!r.ok)continue;
+      const d=await r.json();
+      const cid=d.IdentifierList?.CID?.[0]||d.CIDList?.CID?.[0];
+      if(cid)return cid;
+    }catch{}
+  }
+  return null;
+}
+async function fetch3DSDF(cid){
+  const opts={mode:'cors'};
+  try{
+    const r=await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/SDF?record_type=3d`,opts);
+    if(r.ok)return await r.text();
+    const r2=await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/SDF`,opts);
+    if(r2.ok)return await r2.text();
+  }catch{}
+  return null;
+}
+async function fetchMoleculeProps(cid){
+  try{
+    const r=await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/property/MolecularFormula,MolecularWeight,IUPACName/JSON`);
+    const d=await r.json();const p=d.PropertyTable?.Properties?.[0]||{};
+    const sr=await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/synonyms/JSON`);
+    const sd=await sr.json();
+    const syns=sd.InformationList?.Information?.[0]?.Synonym||[];
+    return{formula:p.MolecularFormula,weight:p.MolecularWeight,iupac:p.IUPACName,name:syns[0]||p.IUPACName||'',cid};
+  }catch{return{};}
+}
+function renderMolecule(sdfData,skipStyleReset){
+  lastSdf=sdfData;
+  const c=document.getElementById('viewer-container');
+  c.style.height='100%';c.dataset.skeletal='';
+  if(!viewer){
+    c.innerHTML='';
+    viewer=$3Dmol.createViewer(c,{backgroundColor:'#0d1318',antialias:true});
+  } else {
+    viewer.removeAllModels();
+    viewer.removeAllSurfaces();
+    viewer.resize();
+  }
+  viewer.addModel(sdfData,'sdf');
+  if(!skipStyleReset&&currentStyle==='skeletal')currentStyle='stick';
+  applyStyle(currentStyle);
+  viewer.zoomTo();viewer.render();
+  document.getElementById('viewer-controls').style.display='flex';
+  document.getElementById('style-selector').style.display='flex';
+}
+function applyStyle(style){
+  if(style==='skeletal'){
+    // Show 2D skeletal formula via PubChem image
+    showSkeletalView();
+    return;
+  }
+  const container=document.getElementById('viewer-container');
+  // Restore 3D viewer if switching away from skeletal
+  if(container.dataset.skeletal==='1'){
+    container.dataset.skeletal='';
+    if(lastSdf)renderMolecule(lastSdf,true);
+    return;
+  }
+  if(!viewer)return;viewer.setStyle({},{});
+  if(style==='stick')viewer.setStyle({},{stick:{colorscheme:'Jmol',radius:.15},sphere:{colorscheme:'Jmol',scale:.3}});
+  else if(style==='sphere')viewer.setStyle({},{sphere:{colorscheme:'Jmol'}});
+  else if(style==='line')viewer.setStyle({},{line:{colorscheme:'Jmol',linewidth:2}});
+  viewer.render();
+}
+
+let lastSdf=null;
+let lastCid=null;
+
+function showSkeletalView(){
+  if(!lastCid)return;
+  const container=document.getElementById('viewer-container');
+  container.dataset.skeletal='1';
+  container.innerHTML=`
+    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--surface);flex-direction:column;gap:12px">
+      <div style="background:#fff;border-radius:8px;padding:12px;display:flex;align-items:center;justify-content:center;max-width:80%;max-height:80%">
+        <img src="https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${lastCid}/PNG?record_type=2d&image_size=400x300"
+          style="max-width:100%;max-height:60vh;object-fit:contain"
+          onerror="this.parentElement.innerHTML='<div style=color:#999;font-size:12px;padding:20px>2D 구조 이미지를 불러올 수 없습니다</div>'"
+        >
+      </div>
+      <div style="font-size:10px;color:var(--text-mute);letter-spacing:.08em">2D SKELETAL FORMULA</div>
+    </div>`;
+}
+function setStyle(style){
+  const prev=currentStyle;
+  currentStyle=style;
+  document.querySelectorAll('.style-btn').forEach(b=>b.classList.toggle('active',b.dataset.style===style));
+  if(style==='skeletal'){
+    applyStyle('skeletal');
+  } else {
+    const container=document.getElementById('viewer-container');
+    if(container.dataset.skeletal==='1'){
+      // restore 3d viewer
+      container.dataset.skeletal='';
+      if(lastSdf)renderMolecule(lastSdf,true);
+      // re-apply chosen style after viewer rebuild
+      setTimeout(()=>{if(viewer){applyStyle(style);}},50);
+    } else {
+      applyStyle(style);
+    }
+  }
+}
+function resetView(){if(viewer){viewer.zoomTo();viewer.render();}}
+function toggleSpin(){
+  if(!viewer)return;isSpinning=!isSpinning;
+  const btn=document.getElementById('spin-btn');
+  if(isSpinning){viewer.spin('y',1);btn.style.color='var(--accent)';}
+  else{viewer.spin(false);btn.style.color='';}
+}
+function showMolInfo(props,raw){
+  lastProps=props;lastRaw=raw;
+  const{formula,weight,iupac,name,cid}=props;
+  const elements=parseElements(formula||raw);
+  const formatted=formatFormula(formula||raw);
+  let html=`
+    <div class="info-section animate-in">
+      <div class="info-section-title">${t('idSection')}</div>
+      <div class="mol-name">${capitalize(name||iupac||raw)}</div>
+      <div class="mol-formula-display">${formatted}</div>
+    </div>
+    <div class="info-section animate-in">
+      <div class="info-section-title">${t('physSection')}</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">${t('mw')}</div><div class="stat-value">${weight?parseFloat(weight).toFixed(3):'—'}<span class="stat-unit">g/mol</span></div></div>
+        <div class="stat-card"><div class="stat-label">${t('elemCount')}</div><div class="stat-value">${Object.keys(elements).length}<span class="stat-unit">${t('molUnit')}</span></div></div>
+        <div class="stat-card" style="grid-column:1/-1"><div class="stat-label">${t('atomCount')}</div><div class="stat-value">${Object.values(elements).reduce((a,b)=>a+b,0)}<span class="stat-unit">${t('atomUnit')}</span></div></div>
+      </div>
+    </div>
+    <div class="info-section animate-in">
+      <div class="info-section-title">${t('elemSection')}</div>
+      <div class="elements-list">${Object.entries(elements).map(([el,cnt])=>`<div class="element-tag"><div class="element-dot" style="background:${getElementColor(el)}"></div><span class="element-symbol">${el}</span><span class="element-count">x${cnt}</span></div>`).join('')}</div>
+    </div>
+    ${iupac?`<div class="info-section animate-in"><div class="info-section-title">${t('iupacSection')}</div><div style="font-size:10px;color:var(--text-dim);line-height:1.6;word-break:break-word;overflow-wrap:anywhere">${iupac}</div></div>`:''}
+    ${cid?`<div class="info-section animate-in" style="border-bottom:none"><div class="info-section-title">// <span class="status-dot"></span>PubChem</div><div style="font-size:9px;color:var(--text-mute)">CID: ${cid}</div></div>`:''}`;
+  document.getElementById('info-placeholder').style.display='none';
+  const mi=document.getElementById('mol-info');
+  mi.style.display='block';
+  mi.innerHTML=html;
+}
+function parseElements(f){
+  if(!f)return{};const r={},re=/([A-Z][a-z]?)(\d*)/g;let m;
+  while((m=re.exec(f))!==null)if(m[1])r[m[1]]=(r[m[1]]||0)+(parseInt(m[2])||1);
+  return r;
+}
+function formatFormula(f){return f?f.replace(/(\d+)/g,'<sub>$1</sub>'):''}
+function capitalize(s){return s?s.charAt(0).toUpperCase()+s.slice(1):''}
+
+async function searchReaction(){
+  const raw=document.getElementById('reaction-input').value.trim();if(!raw)return;
+  if(!raw.includes('→')&&!raw.includes('>')){showError(t('errRxnArrow'));return;}
+  showLoading();document.getElementById('placeholder').style.display='none';
+  try{
+    const parsed=parseReaction(raw);
+    const rFormulas=parsed.reactants.map(x=>x.formula);
+    const pFormulas=parsed.products.map(x=>x.formula);
+    const allFormulas=[...rFormulas,...pFormulas];
+    const cids=await Promise.all(allFormulas.map(f=>getCID(f)));
+    const sdfs=await Promise.all(cids.map((cid,i)=>cid?fetch3DSDF(cid):null));
+    const rSdfs=sdfs.slice(0,rFormulas.length);
+    const pSdfs=sdfs.slice(rFormulas.length);
+    await renderReactionViewers(parsed.reactants,parsed.products,{r:rSdfs,p:pSdfs});
+  }catch(err){showError(err.message);}
+  finally{hideLoading();}
+}
+// parse reaction: returns {reactants:[{coeff,formula}], products:[{coeff,formula}]}
+// ── Atom colors & radii ──
+const ATOM_STYLE={
+  H:{color:'#b0d8ff',stroke:'#5aaeff',r:14,label:'H'},
+  C:{color:'#606060',stroke:'#909090',r:18,label:'C'},
+  N:{color:'#4060f0',stroke:'#7090ff',r:17,label:'N'},
+  O:{color:'#e03030',stroke:'#ff6060',r:17,label:'O'},
+  F:{color:'#50c878',stroke:'#80f0a0',r:14,label:'F'},
+  Cl:{color:'#20c020',stroke:'#60e060',r:18,label:'Cl'},
+  Na:{color:'#aa44ee',stroke:'#cc88ff',r:20,label:'Na'},
+  S:{color:'#d4b000',stroke:'#ffdd00',r:18,label:'S'},
+  P:{color:'#e06000',stroke:'#ff9020',r:17,label:'P'},
+  Ca:{color:'#40cc40',stroke:'#70ff70',r:20,label:'Ca'},
+  Mg:{color:'#2aaa40',stroke:'#50dd60',r:19,label:'Mg'},
+  K: {color:'#7030c0',stroke:'#a060f0',r:22,label:'K'},
+  default:{color:'#778899',stroke:'#aabbcc',r:16,label:'?'}
+};
+
+function getAtomStyle(sym){return ATOM_STYLE[sym]||ATOM_STYLE.default;}
+
+// Draw a single molecule as SVG balls arranged by count
+function drawMoleculeSVG(formula, coeff){
+  const atoms = parseElements(formula);
+  // Build atom list (with repetition by count, max 12 for display)
+  const atomList=[];
+  Object.entries(atoms).forEach(([sym,cnt])=>{
+    for(let i=0;i<Math.min(cnt,8);i++) atomList.push(sym);
+  });
+  const n=atomList.length;
+  if(n===0)return null;
+
+  // Layout: arrange in rows of up to 4
+  const cols=Math.min(n,4);
+  const rows=Math.ceil(n/cols);
+  const maxR=22;
+  const pad=6;
+  const cellW=(maxR*2+pad);
+  const cellH=(maxR*2+pad);
+  const W=cols*cellW+pad*2;
+  const H=rows*cellH+pad*2;
+
+  const ns='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.setAttribute('width',W);
+  svg.setAttribute('height',H);
+  svg.style.maxWidth='100%';
+  svg.style.maxHeight='100%';
+
+  // Draw bonds (simple lines between adjacent atoms)
+  for(let i=0;i<n-1&&i<8;i++){
+    const col1=i%cols, row1=Math.floor(i/cols);
+    const col2=(i+1)%cols, row2=Math.floor((i+1)/cols);
+    if(row1===row2){
+      const x1=pad+col1*cellW+maxR;
+      const y1=pad+row1*cellH+maxR;
+      const x2=pad+col2*cellW+maxR;
+      const line=document.createElementNS(ns,'line');
+      line.setAttribute('x1',x1);line.setAttribute('y1',y1);
+      line.setAttribute('x2',x2);line.setAttribute('y2',y1);
+      line.setAttribute('stroke','rgba(255,255,255,.2)');
+      line.setAttribute('stroke-width','3');
+      svg.appendChild(line);
+    }
+  }
+
+  atomList.forEach(function(sym,i){
+    const col=i%cols, row=Math.floor(i/cols);
+    const cx=pad+col*cellW+maxR;
+    const cy=pad+row*cellH+maxR;
+    const st=getAtomStyle(sym);
+
+    // Glow
+    const glow=document.createElementNS(ns,'circle');
+    glow.setAttribute('cx',cx);glow.setAttribute('cy',cy);
+    glow.setAttribute('r',st.r+5);
+    glow.setAttribute('fill',st.color);
+    glow.setAttribute('opacity','0.15');
+    svg.appendChild(glow);
+
+    // Main circle with gradient effect (two circles)
+    const circle=document.createElementNS(ns,'circle');
+    circle.setAttribute('cx',cx);circle.setAttribute('cy',cy);
+    circle.setAttribute('r',st.r);
+    circle.setAttribute('fill',st.color);
+    circle.setAttribute('stroke',st.stroke);
+    circle.setAttribute('stroke-width','1.5');
+    svg.appendChild(circle);
+
+    // Highlight
+    const hi=document.createElementNS(ns,'circle');
+    hi.setAttribute('cx',cx-st.r*.25);hi.setAttribute('cy',cy-st.r*.28);
+    hi.setAttribute('r',st.r*.35);
+    hi.setAttribute('fill','rgba(255,255,255,.25)');
+    svg.appendChild(hi);
+
+    // Label
+    const text=document.createElementNS(ns,'text');
+    text.setAttribute('x',cx);text.setAttribute('y',cy);
+    text.setAttribute('text-anchor','middle');
+    text.setAttribute('dominant-baseline','central');
+    text.setAttribute('font-size',sym.length>1?'9':'11');
+    text.setAttribute('font-weight','700');
+    text.setAttribute('font-family','Syne, sans-serif');
+    text.setAttribute('fill','#fff');
+    text.setAttribute('pointer-events','none');
+    text.textContent=sym;
+    svg.appendChild(text);
+  });
+
+  return svg;
+}
+
+// Build the equation display bar
+function buildEqBar(reactants, products){
+  const bar=document.getElementById('rxn-eq-bar');
+  bar.innerHTML='';
+  function addTerm(mol, cls){
+    const wrap=document.createElement('span');
+    if(mol.coeff>1){
+      const cs=document.createElement('span');
+      cs.className='rxn-eq-term rxn-eq-coeff';
+      cs.textContent=mol.coeff;
+      wrap.appendChild(cs);
+    }
+    const fs=document.createElement('span');
+    fs.className='rxn-eq-term '+cls;
+    fs.innerHTML=mol.formula.replace(/(\d+)/g,'<sub>$1</sub>');
+    wrap.appendChild(fs);
+    bar.appendChild(wrap);
+  }
+  reactants.forEach(function(m,i){
+    if(i>0){const p=document.createElement('span');p.className='rxn-eq-plus';p.textContent=' + ';bar.appendChild(p);}
+    addTerm(m,'rxn-eq-r');
+  });
+  const arr=document.createElement('span');
+  arr.className='rxn-eq-arrow';arr.textContent=' → ';
+  bar.appendChild(arr);
+  products.forEach(function(m,i){
+    if(i>0){const p=document.createElement('span');p.className='rxn-eq-plus';p.textContent=' + ';bar.appendChild(p);}
+    addTerm(m,'rxn-eq-p');
+  });
+}
+
+// Build molecule visualization body
+function buildMolGrid(reactants, products){
+  const grid=document.getElementById('rxn-mol-grid');
+  grid.innerHTML='';
+
+  const body=document.createElement('div');
+  body.style.cssText='display:flex;flex-direction:column;align-items:flex-start;gap:0;width:100%;max-width:900px;padding:0 24px;';
+
+  function makeRow(mols, side){
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;flex-direction:row;align-items:flex-start;gap:12px;width:100%;padding:16px 0;';
+
+    // Side label
+    const label=document.createElement('div');
+    const labelColor=side==='r'?'var(--accent)':'var(--accent3)';
+    label.style.cssText='font-size:9px;letter-spacing:.15em;text-transform:uppercase;width:60px;flex-shrink:0;text-align:right;padding-right:10px;padding-top:14px;color:'+labelColor+';font-family:var(--mono);line-height:1.4;';
+    label.textContent=side==='r'?t('reactant'):t('product');
+    row.appendChild(label);
+
+    // Molecules wrap
+    const molsWrap=document.createElement('div');
+    molsWrap.style.cssText='display:flex;flex-direction:row;align-items:flex-start;flex-wrap:wrap;gap:14px;flex:1;';
+
+    mols.forEach(function(mol,i){
+      if(i>0){
+        const p=document.createElement('span');
+        p.style.cssText='font-size:22px;font-weight:700;color:var(--text-dim);flex-shrink:0;padding-top:10px;';
+        p.textContent='+';
+        molsWrap.appendChild(p);
+      }
+      molsWrap.appendChild(makeMolViz(mol, side));
+    });
+    row.appendChild(molsWrap);
+    return row;
+  }
+
+  body.appendChild(makeRow(reactants,'r'));
+
+  // Arrow divider
+  const divider=document.createElement('div');
+  divider.style.cssText='display:flex;align-items:center;width:100%;padding:4px 0;padding-left:72px;';
+  const ns='http://www.w3.org/2000/svg';
+  const arrowSvg=document.createElementNS(ns,'svg');
+  arrowSvg.setAttribute('viewBox','0 0 24 32');
+  arrowSvg.setAttribute('width','22');arrowSvg.setAttribute('height','30');
+  arrowSvg.style.cssText='display:block;';
+  const aPath=document.createElementNS(ns,'path');
+  aPath.setAttribute('d','M12 2 L12 22 M5 16 L12 24 L19 16');
+  aPath.setAttribute('stroke','#7b61ff');aPath.setAttribute('stroke-width','2.5');
+  aPath.setAttribute('stroke-linecap','round');aPath.setAttribute('stroke-linejoin','round');
+  aPath.setAttribute('fill','none');
+  arrowSvg.appendChild(aPath);
+  divider.appendChild(arrowSvg);
+  body.appendChild(divider);
+
+  body.appendChild(makeRow(products,'p'));
+  grid.appendChild(body);
+}
+
+// Make molecule viz card: shows coeff copies of the molecule + atom count summary
+function makeMolViz(mol, side){
+  const accentColor=side==='r'?'rgba(0,229,255,.15)':'rgba(57,255,126,.15)';
+  const borderColor=side==='r'?'rgba(0,229,255,.2)':'rgba(57,255,126,.2)';
+
+  const card=document.createElement('div');
+  card.style.cssText='display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;background:'+accentColor+';border:1px solid '+borderColor+';border-radius:10px;padding:10px 12px;';
+
+  // Formula label
+  const fLabel=document.createElement('div');
+  fLabel.style.cssText='font-family:var(--sans);font-size:13px;font-weight:700;color:#fff;letter-spacing:-.3px;';
+  fLabel.innerHTML=(mol.coeff>1?'<span style="color:var(--accent2);margin-right:2px">'+mol.coeff+'</span>':'')+mol.formula.replace(/(\d+)/g,'<sub style="font-size:9px">$1</sub>');
+  card.appendChild(fLabel);
+
+  // Molecule copies row (coeff copies, max 6)
+  const copies=Math.min(mol.coeff,6);
+  const molsRow=document.createElement('div');
+  molsRow.style.cssText='display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;justify-content:center;max-width:320px;';
+  for(let c=0;c<copies;c++){
+    const svg=drawMoleculeSVG(mol.formula);
+    if(svg){
+      svg.style.cssText='display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.5));';
+      molsRow.appendChild(svg);
+    }
+  }
+  card.appendChild(molsRow);
+
+  // Atom count summary
+  const atoms=parseElements(mol.formula);
+  const totalAtoms={};
+  Object.entries(atoms).forEach(function([sym,cnt]){
+    totalAtoms[sym]=(totalAtoms[sym]||0)+cnt*mol.coeff;
+  });
+  const summary=document.createElement('div');
+  summary.style.cssText='display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:2px;';
+  Object.entries(totalAtoms).forEach(function([sym,total]){
+    const tag=document.createElement('span');
+    const st=getAtomStyle(sym);
+    tag.style.cssText='display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;font-size:9px;font-family:var(--mono);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:var(--text-dim);white-space:nowrap;';
+    const dot=document.createElement('span');
+    dot.style.cssText='width:7px;height:7px;border-radius:50%;background:'+st.color+';flex-shrink:0;display:inline-block;';
+    tag.appendChild(dot);
+    tag.appendChild(document.createTextNode(sym+' ×'+total));
+    summary.appendChild(tag);
+  });
+  card.appendChild(summary);
+  return card;
+}
+
+function parseReaction(raw){
+  const hasArrow=raw.includes('\u2192');
+  const arrow=hasArrow?'\u2192':'>';
+  const idx=raw.indexOf(arrow);
+  if(idx<0)return{reactants:[],products:[]};
+  const L=raw.slice(0,idx).trim();
+  const R=raw.slice(idx+arrow.length).trim();
+  function parseSide(side){
+    return side.split('+').map(s=>{
+      s=s.trim();
+      const m=s.match(/^(\d+)(.+)/);
+      return m?{coeff:parseInt(m[1]),formula:m[2].trim()}:{coeff:1,formula:s};
+    }).filter(x=>x.formula);
+  }
+  return{reactants:parseSide(L),products:parseSide(R)};
+}
+
+let rxnMolList=[];
+let rxnActiveIdx=0;
+let rxnViewer3d=null;
+
+async function renderReactionViewers(reactants,products,sdfs){
+  rxnMolList=reactants.map((m,i)=>({...m,sdf:sdfs.r[i],side:'r'}))
+    .concat(products.map((m,i)=>({...m,sdf:sdfs.p[i],side:'p'})));
+  rxnActiveIdx=0;
+  lastRxnState={reactants,products,sdfs};
+
+  buildEqBar(reactants,products);
+  buildMolGrid(reactants,products);
+  renderRxnInfoPanel(reactants,products,sdfs);
+}
+
+// stubs no longer needed but kept for safety
+function buildRxnTabs(){}
+function showRxnMol(idx){rxnActiveIdx=idx;}
+function rxnNav(dir){}
+function makeMolCard(){}
+
+function renderRxnInfoPanel(reactants,products,sdfs){
+  document.getElementById('info-placeholder').style.display='none';
+  const molInfo=document.getElementById('mol-info');
+  molInfo.style.display='block';
+  molInfo.innerHTML='';
+
+  const sec=document.createElement('div');
+  sec.className='info-section animate-in';
+  const title=document.createElement('div');
+  title.className='info-section-title';
+  title.textContent='// '+t('reactionWord');
+  sec.appendChild(title);
+  molInfo.appendChild(sec);
+
+  const all=[
+    ...reactants.map(function(m,i){return{mol:m,side:'r'};}),
+    ...products.map(function(m,i){return{mol:m,side:'p'};})
+  ];
+
+  all.forEach(function(item){
+    const card=document.createElement('div');
+    card.className='info-section animate-in';
+    card.style.cssText='cursor:pointer;transition:background .15s;';
+    card.addEventListener('mouseenter',function(){card.style.background='rgba(0,229,255,.04)';});
+    card.addEventListener('mouseleave',function(){card.style.background='';});
+
+    const badge=document.createElement('span');
+    badge.style.cssText='display:inline-block;padding:2px 7px;border-radius:3px;font-size:8px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;';
+    if(item.side==='r'){badge.style.cssText+='background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.25);color:var(--accent)';}
+    else{badge.style.cssText+='background:rgba(57,255,126,.12);border:1px solid rgba(57,255,126,.25);color:var(--accent3)';}
+    badge.textContent=item.side==='r'?t('reactant'):t('product');
+
+    const nameEl=document.createElement('div');
+    nameEl.className='mol-name';
+    nameEl.style.cssText='font-size:15px;margin-bottom:3px';
+    nameEl.innerHTML=item.mol.formula.replace(/(\d+)/g,'<sub>$1</sub>');
+
+    const viewHint=document.createElement('div');
+    viewHint.style.cssText='font-size:9px;color:var(--text-mute);margin-top:6px;letter-spacing:.07em;text-transform:uppercase';
+    viewHint.textContent=t('goToViewer')+' →';
+
+    card.appendChild(badge);
+    card.appendChild(nameEl);
+    card.appendChild(viewHint);
+
+    const formula=item.mol.formula;
+    card.addEventListener('click',function(){
+      switchPage('mol');
+      setMode('molecule');
+      document.getElementById('formula-input').value=formula;
+      searchMolecule(formula);
+    });
+    molInfo.appendChild(card);
+  });
+}
+
+function addToHistory(formula,name){
+  history=history.filter(h=>h.formula!==formula);
+  history.unshift({formula,name,time:Date.now()});
+  if(history.length>30)history=history.slice(0,30);
+  localStorage.setItem('chemviz_history',JSON.stringify(history));renderHistoryList();
+}
+function renderHistoryList(){
+  const el=document.getElementById('history-list');
+  if(!history.length){el.innerHTML=`<div class="history-empty">${t('histEmpty')}</div>`;return;}
+  el.innerHTML=history.map(h=>`<div class="history-item" onclick="loadFromHistory('${h.formula}')"><div><div class="history-formula">${formatFormula(h.formula)}</div><div class="history-name">${h.name!==h.formula?h.name:''}</div></div><div class="history-time">${timeAgo(h.time)}</div></div>`).join('');
+}
+function loadFromHistory(formula){
+  document.getElementById('formula-input').value=formula;
+  document.getElementById('history-dropdown').classList.remove('open');
+  if(currentPage!=='mol')switchPage('mol');
+  if(currentMode!=='molecule')setMode('molecule');
+  searchMolecule();
+}
+function clearHistory(){history=[];localStorage.removeItem('chemviz_history');renderHistoryList();updateRecentChips();}
+function toggleHistory(){document.getElementById('history-dropdown').classList.toggle('open');renderHistoryList();}
+function updateRecentChips(){
+  document.getElementById('recent-chips').innerHTML=history.slice(0,6).map(h=>`<button class="recent-chip" onclick="loadFromHistory('${h.formula}')">${h.formula}</button>`).join('');
+}
+function timeAgo(ts){
+  const s=Math.floor((Date.now()-ts)/1000);
+  if(s<60)return t('justNow');
+  if(s<3600)return lang==='ko'?`${Math.floor(s/60)}분 전`:`${Math.floor(s/60)}m ago`;
+  if(s<86400)return lang==='ko'?`${Math.floor(s/3600)}시간 전`:`${Math.floor(s/3600)}h ago`;
+  return lang==='ko'?`${Math.floor(s/86400)}일 전`:`${Math.floor(s/86400)}d ago`;
+}
+function showLoading(){document.getElementById('loading').classList.add('active');}
+function hideLoading(){document.getElementById('loading').classList.remove('active');}
+function showError(msg){
+  const el=document.getElementById('error-state');
+  document.getElementById('error-msg').textContent=msg;
+  el.classList.add('active');setTimeout(()=>el.classList.remove('active'),4500);
+}
+function hideError(){document.getElementById('error-state').classList.remove('active');}
+function hidePlaceholder(){document.getElementById('placeholder').style.display='none';}
+document.addEventListener('click',e=>{
+  const dd=document.getElementById('history-dropdown');
+  if(!dd.contains(e.target)&&!e.target.closest('.history-btn'))dd.classList.remove('open');
+});
+
+// ═══ PERIODIC TABLE ═══
+// [num, sym, nameKo, nameEn, mass, category, stateRT, group, period, config, abundancePPM, discoveryYear, radioactive]
+const ELEMENTS=[
+[1,'H','수소','Hydrogen',1.008,'nonmetal','gas',1,1,'1s¹',1400,1766,false],
+[2,'He','헬륨','Helium',4.003,'noble','gas',18,1,'1s²',0.008,1868,false],
+[3,'Li','리튬','Lithium',6.941,'alkali','solid',1,2,'[He] 2s¹',20,1817,false],
+[4,'Be','베릴륨','Beryllium',9.012,'alkaline','solid',2,2,'[He] 2s²',2.8,1798,false],
+[5,'B','붕소','Boron',10.81,'metalloid','solid',13,2,'[He] 2s² 2p¹',10,1808,false],
+[6,'C','탄소','Carbon',12.011,'nonmetal','solid',14,2,'[He] 2s² 2p²',200,1789,false],
+[7,'N','질소','Nitrogen',14.007,'nonmetal','gas',15,2,'[He] 2s² 2p³',19,1772,false],
+[8,'O','산소','Oxygen',15.999,'nonmetal','gas',16,2,'[He] 2s² 2p⁴',461000,1774,false],
+[9,'F','플루오린','Fluorine',18.998,'halogen','gas',17,2,'[He] 2s² 2p⁵',585,1886,false],
+[10,'Ne','네온','Neon',20.180,'noble','gas',18,2,'[He] 2s² 2p⁶',0.005,1898,false],
+[11,'Na','나트륨','Sodium',22.990,'alkali','solid',1,3,'[Ne] 3s¹',23600,1807,false],
+[12,'Mg','마그네슘','Magnesium',24.305,'alkaline','solid',2,3,'[Ne] 3s²',23300,1755,false],
+[13,'Al','알루미늄','Aluminum',26.982,'post','solid',13,3,'[Ne] 3s² 3p¹',82300,1825,false],
+[14,'Si','규소','Silicon',28.086,'metalloid','solid',14,3,'[Ne] 3s² 3p²',282000,1823,false],
+[15,'P','인','Phosphorus',30.974,'nonmetal','solid',15,3,'[Ne] 3s² 3p³',1050,1669,false],
+[16,'S','황','Sulfur',32.065,'nonmetal','solid',16,3,'[Ne] 3s² 3p⁴',350,1789,false],
+[17,'Cl','염소','Chlorine',35.453,'halogen','gas',17,3,'[Ne] 3s² 3p⁵',145,1774,false],
+[18,'Ar','아르곤','Argon',39.948,'noble','gas',18,3,'[Ne] 3s² 3p⁶',3.5,1894,false],
+[19,'K','칼륨','Potassium',39.098,'alkali','solid',1,4,'[Ar] 4s¹',20900,1807,false],
+[20,'Ca','칼슘','Calcium',40.078,'alkaline','solid',2,4,'[Ar] 4s²',41500,1808,false],
+[21,'Sc','스칸듐','Scandium',44.956,'transition','solid',3,4,'[Ar] 3d¹ 4s²',22,1879,false],
+[22,'Ti','타이타늄','Titanium',47.867,'transition','solid',4,4,'[Ar] 3d² 4s²',5650,1791,false],
+[23,'V','바나듐','Vanadium',50.942,'transition','solid',5,4,'[Ar] 3d³ 4s²',120,1801,false],
+[24,'Cr','크로뮴','Chromium',51.996,'transition','solid',6,4,'[Ar] 3d⁵ 4s¹',102,1798,false],
+[25,'Mn','망가니즈','Manganese',54.938,'transition','solid',7,4,'[Ar] 3d⁵ 4s²',950,1774,false],
+[26,'Fe','철','Iron',55.845,'transition','solid',8,4,'[Ar] 3d⁶ 4s²',56300,1789,false],
+[27,'Co','코발트','Cobalt',58.933,'transition','solid',9,4,'[Ar] 3d⁷ 4s²',25,1735,false],
+[28,'Ni','니켈','Nickel',58.693,'transition','solid',10,4,'[Ar] 3d⁸ 4s²',84,1751,false],
+[29,'Cu','구리','Copper',63.546,'transition','solid',11,4,'[Ar] 3d¹⁰ 4s¹',60,1789,false],
+[30,'Zn','아연','Zinc',65.38,'transition','solid',12,4,'[Ar] 3d¹⁰ 4s²',70,1746,false],
+[31,'Ga','갈륨','Gallium',69.723,'post','solid',13,4,'[Ar] 3d¹⁰ 4s² 4p¹',19,1875,false],
+[32,'Ge','저마늄','Germanium',72.630,'metalloid','solid',14,4,'[Ar] 3d¹⁰ 4s² 4p²',1.5,1886,false],
+[33,'As','비소','Arsenic',74.922,'metalloid','solid',15,4,'[Ar] 3d¹⁰ 4s² 4p³',1.8,1250,false],
+[34,'Se','셀레늄','Selenium',78.971,'nonmetal','solid',16,4,'[Ar] 3d¹⁰ 4s² 4p⁴',0.05,1817,false],
+[35,'Br','브로민','Bromine',79.904,'halogen','liquid',17,4,'[Ar] 3d¹⁰ 4s² 4p⁵',2.4,1826,false],
+[36,'Kr','크립톤','Krypton',83.798,'noble','gas',18,4,'[Ar] 3d¹⁰ 4s² 4p⁶',0.0001,1898,false],
+[37,'Rb','루비듐','Rubidium',85.468,'alkali','solid',1,5,'[Kr] 5s¹',90,1861,false],
+[38,'Sr','스트론튬','Strontium',87.62,'alkaline','solid',2,5,'[Kr] 5s²',370,1790,false],
+[39,'Y','이트륨','Yttrium',88.906,'transition','solid',3,5,'[Kr] 4d¹ 5s²',33,1794,false],
+[40,'Zr','지르코늄','Zirconium',91.224,'transition','solid',4,5,'[Kr] 4d² 5s²',165,1789,false],
+[41,'Nb','나이오븀','Niobium',92.906,'transition','solid',5,5,'[Kr] 4d⁴ 5s¹',20,1801,false],
+[42,'Mo','몰리브데넘','Molybdenum',95.96,'transition','solid',6,5,'[Kr] 4d⁵ 5s¹',1.2,1781,false],
+[43,'Tc','테크네튬','Technetium',97,'transition','synthetic',7,5,'[Kr] 4d⁵ 5s²',0,1937,true],
+[44,'Ru','루테늄','Ruthenium',101.07,'transition','solid',8,5,'[Kr] 4d⁷ 5s¹',0.001,1844,false],
+[45,'Rh','로듐','Rhodium',102.906,'transition','solid',9,5,'[Kr] 4d⁸ 5s¹',0.001,1803,false],
+[46,'Pd','팔라듐','Palladium',106.42,'transition','solid',10,5,'[Kr] 4d¹⁰',0.015,1803,false],
+[47,'Ag','은','Silver',107.868,'transition','solid',11,5,'[Kr] 4d¹⁰ 5s¹',0.075,1789,false],
+[48,'Cd','카드뮴','Cadmium',112.411,'transition','solid',12,5,'[Kr] 4d¹⁰ 5s²',0.15,1817,false],
+[49,'In','인듐','Indium',114.818,'post','solid',13,5,'[Kr] 4d¹⁰ 5s² 5p¹',0.25,1863,false],
+[50,'Sn','주석','Tin',118.710,'post','solid',14,5,'[Kr] 4d¹⁰ 5s² 5p²',2.3,1789,false],
+[51,'Sb','안티모니','Antimony',121.760,'metalloid','solid',15,5,'[Kr] 4d¹⁰ 5s² 5p³',0.2,1789,false],
+[52,'Te','텔루륨','Tellurium',127.60,'metalloid','solid',16,5,'[Kr] 4d¹⁰ 5s² 5p⁴',0.001,1783,false],
+[53,'I','아이오딘','Iodine',126.904,'halogen','solid',17,5,'[Kr] 4d¹⁰ 5s² 5p⁵',0.45,1811,false],
+[54,'Xe','제논','Xenon',131.293,'noble','gas',18,5,'[Kr] 4d¹⁰ 5s² 5p⁶',0.00003,1898,false],
+[55,'Cs','세슘','Cesium',132.905,'alkali','solid',1,6,'[Xe] 6s¹',3,1860,false],
+[56,'Ba','바륨','Barium',137.327,'alkaline','solid',2,6,'[Xe] 6s²',425,1808,false],
+[57,'La','란타넘','Lanthanum',138.905,'lanthanide','solid',3,6,'[Xe] 5d¹ 6s²',39,1839,false],
+[58,'Ce','세륨','Cerium',140.116,'lanthanide','solid',null,6,'[Xe] 4f¹ 5d¹ 6s²',66.5,1803,false],
+[59,'Pr','프라세오디뮴','Praseodymium',140.908,'lanthanide','solid',null,6,'[Xe] 4f³ 6s²',9.2,1885,false],
+[60,'Nd','네오디뮴','Neodymium',144.242,'lanthanide','solid',null,6,'[Xe] 4f⁴ 6s²',41.5,1885,false],
+[61,'Pm','프로메튬','Promethium',145,'lanthanide','synthetic',null,6,'[Xe] 4f⁵ 6s²',0,1945,true],
+[62,'Sm','사마륨','Samarium',150.36,'lanthanide','solid',null,6,'[Xe] 4f⁶ 6s²',7.05,1879,false],
+[63,'Eu','유로퓸','Europium',151.964,'lanthanide','solid',null,6,'[Xe] 4f⁷ 6s²',2,1901,false],
+[64,'Gd','가돌리늄','Gadolinium',157.25,'lanthanide','solid',null,6,'[Xe] 4f⁷ 5d¹ 6s²',6.2,1886,false],
+[65,'Tb','터븀','Terbium',158.925,'lanthanide','solid',null,6,'[Xe] 4f⁹ 6s²',1.2,1843,false],
+[66,'Dy','디스프로슘','Dysprosium',162.500,'lanthanide','solid',null,6,'[Xe] 4f¹⁰ 6s²',5.2,1886,false],
+[67,'Ho','홀뮴','Holmium',164.930,'lanthanide','solid',null,6,'[Xe] 4f¹¹ 6s²',1.3,1879,false],
+[68,'Er','어븀','Erbium',167.259,'lanthanide','solid',null,6,'[Xe] 4f¹² 6s²',3.5,1843,false],
+[69,'Tm','툴륨','Thulium',168.934,'lanthanide','solid',null,6,'[Xe] 4f¹³ 6s²',0.52,1879,false],
+[70,'Yb','이터븀','Ytterbium',173.054,'lanthanide','solid',null,6,'[Xe] 4f¹⁴ 6s²',3.2,1878,false],
+[71,'Lu','루테튬','Lutetium',174.967,'lanthanide','solid',3,6,'[Xe] 4f¹⁴ 5d¹ 6s²',0.8,1907,false],
+[72,'Hf','하프늄','Hafnium',178.49,'transition','solid',4,6,'[Xe] 4f¹⁴ 5d² 6s²',3,1923,false],
+[73,'Ta','탄탈럼','Tantalum',180.948,'transition','solid',5,6,'[Xe] 4f¹⁴ 5d³ 6s²',2,1802,false],
+[74,'W','텅스텐','Tungsten',183.84,'transition','solid',6,6,'[Xe] 4f¹⁴ 5d⁴ 6s²',1.25,1783,false],
+[75,'Re','레늄','Rhenium',186.207,'transition','solid',7,6,'[Xe] 4f¹⁴ 5d⁵ 6s²',0.0007,1925,false],
+[76,'Os','오스뮴','Osmium',190.23,'transition','solid',8,6,'[Xe] 4f¹⁴ 5d⁶ 6s²',0.002,1803,false],
+[77,'Ir','이리듐','Iridium',192.217,'transition','solid',9,6,'[Xe] 4f¹⁴ 5d⁷ 6s²',0.001,1803,false],
+[78,'Pt','백금','Platinum',195.084,'transition','solid',10,6,'[Xe] 4f¹⁴ 5d⁹ 6s¹',0.005,1735,false],
+[79,'Au','금','Gold',196.967,'transition','solid',11,6,'[Xe] 4f¹⁴ 5d¹⁰ 6s¹',0.004,1789,false],
+[80,'Hg','수은','Mercury',200.592,'transition','liquid',12,6,'[Xe] 4f¹⁴ 5d¹⁰ 6s²',0.085,1789,false],
+[81,'Tl','탈륨','Thallium',204.383,'post','solid',13,6,'[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p¹',0.85,1861,false],
+[82,'Pb','납','Lead',207.2,'post','solid',14,6,'[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p²',14,1789,false],
+[83,'Bi','비스무트','Bismuth',208.980,'post','solid',15,6,'[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p³',0.009,1789,false],
+[84,'Po','폴로늄','Polonium',209,'metalloid','synthetic',16,6,'[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁴',0,1898,true],
+[85,'At','아스타틴','Astatine',210,'halogen','synthetic',17,6,'[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁵',0,1940,true],
+[86,'Rn','라돈','Radon',222,'noble','gas',18,6,'[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁶',0,1900,true],
+[87,'Fr','프랑슘','Francium',223,'alkali','synthetic',1,7,'[Rn] 7s¹',0,1939,true],
+[88,'Ra','라듐','Radium',226,'alkaline','synthetic',2,7,'[Rn] 7s²',0,1898,true],
+[89,'Ac','악티늄','Actinium',227,'actinide','synthetic',3,7,'[Rn] 6d¹ 7s²',0,1899,true],
+[90,'Th','토륨','Thorium',232.038,'actinide','solid',null,7,'[Rn] 6d² 7s²',9.6,1829,true],
+[91,'Pa','프로트악티늄','Protactinium',231.036,'actinide','solid',null,7,'[Rn] 5f² 6d¹ 7s²',0.001,1917,true],
+[92,'U','우라늄','Uranium',238.029,'actinide','solid',null,7,'[Rn] 5f³ 6d¹ 7s²',2.7,1789,true],
+[93,'Np','넵투늄','Neptunium',237,'actinide','synthetic',null,7,'[Rn] 5f⁴ 6d¹ 7s²',0,1940,true],
+[94,'Pu','플루토늄','Plutonium',244,'actinide','synthetic',null,7,'[Rn] 5f⁶ 7s²',0,1940,true],
+[95,'Am','아메리슘','Americium',243,'actinide','synthetic',null,7,'[Rn] 5f⁷ 7s²',0,1944,true],
+[96,'Cm','퀴륨','Curium',247,'actinide','synthetic',null,7,'[Rn] 5f⁷ 6d¹ 7s²',0,1944,true],
+[97,'Bk','버클륨','Berkelium',247,'actinide','synthetic',null,7,'[Rn] 5f⁹ 7s²',0,1949,true],
+[98,'Cf','캘리포늄','Californium',251,'actinide','synthetic',null,7,'[Rn] 5f¹⁰ 7s²',0,1950,true],
+[99,'Es','아인슈타이늄','Einsteinium',252,'actinide','synthetic',null,7,'[Rn] 5f¹¹ 7s²',0,1952,true],
+[100,'Fm','페르뮴','Fermium',257,'actinide','synthetic',null,7,'[Rn] 5f¹² 7s²',0,1952,true],
+[101,'Md','멘델레븀','Mendelevium',258,'actinide','synthetic',null,7,'[Rn] 5f¹³ 7s²',0,1955,true],
+[102,'No','노벨륨','Nobelium',259,'actinide','synthetic',null,7,'[Rn] 5f¹⁴ 7s²',0,1966,true],
+[103,'Lr','로렌슘','Lawrencium',262,'actinide','synthetic',3,7,'[Rn] 5f¹⁴ 7s² 7p¹',0,1961,true],
+[104,'Rf','러더포듐','Rutherfordium',265,'transition','synthetic',4,7,'[Rn] 5f¹⁴ 6d² 7s²',0,1969,true],
+[105,'Db','더브늄','Dubnium',268,'transition','synthetic',5,7,'[Rn] 5f¹⁴ 6d³ 7s²',0,1970,true],
+[106,'Sg','시보귬','Seaborgium',271,'transition','synthetic',6,7,'[Rn] 5f¹⁴ 6d⁴ 7s²',0,1974,true],
+[107,'Bh','보륨','Bohrium',270,'transition','synthetic',7,7,'[Rn] 5f¹⁴ 6d⁵ 7s²',0,1981,true],
+[108,'Hs','하슘','Hassium',277,'transition','synthetic',8,7,'[Rn] 5f¹⁴ 6d⁶ 7s²',0,1984,true],
+[109,'Mt','마이트너륨','Meitnerium',276,'unknown','synthetic',9,7,'[Rn] 5f¹⁴ 6d⁷ 7s²',0,1982,true],
+[110,'Ds','다름슈타튬','Darmstadtium',281,'unknown','synthetic',10,7,'[Rn] 5f¹⁴ 6d⁸ 7s²',0,1994,true],
+[111,'Rg','뢴트게늄','Roentgenium',280,'unknown','synthetic',11,7,'[Rn] 5f¹⁴ 6d¹⁰ 7s¹',0,1994,true],
+[112,'Cn','코페르니슘','Copernicium',285,'transition','synthetic',12,7,'[Rn] 5f¹⁴ 6d¹⁰ 7s²',0,1996,true],
+[113,'Nh','니호늄','Nihonium',284,'post','synthetic',13,7,'[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p¹',0,2004,true],
+[114,'Fl','플레로븀','Flerovium',289,'post','synthetic',14,7,'[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p²',0,1999,true],
+[115,'Mc','모스코븀','Moscovium',288,'post','synthetic',15,7,'[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p³',0,2003,true],
+[116,'Lv','리버모륨','Livermorium',293,'post','synthetic',16,7,'[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁴',0,2000,true],
+[117,'Ts','테네신','Tennessine',294,'halogen','synthetic',17,7,'[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁵',0,2010,true],
+[118,'Og','오가네손','Oganesson',294,'noble','synthetic',18,7,'[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁶',0,2006,true],
+];
+const elByNum={};ELEMENTS.forEach(e=>elByNum[e[0]]=e);
+
+const COLOR_MODES={
+category:{
+  label:{ko:'원소 분류',en:'Category'},
+  getKey:e=>e[5],
+  palette:{
+    alkali:{ko:'알칼리 금속',en:'Alkali Metal',color:'#c0392b'},
+    alkaline:{ko:'알칼리 토금속',en:'Alkaline Earth',color:'#e67e22'},
+    transition:{ko:'전이 금속',en:'Transition Metal',color:'#2471a3'},
+    post:{ko:'전이 후 금속',en:'Post-Transition',color:'#1e8449'},
+    metalloid:{ko:'반금속',en:'Metalloid',color:'#117a65'},
+    nonmetal:{ko:'비금속',en:'Nonmetal',color:'#6c3483'},
+    halogen:{ko:'할로겐',en:'Halogen',color:'#d35400'},
+    noble:{ko:'비활성 기체',en:'Noble Gas',color:'#1a252f'},
+    lanthanide:{ko:'란타넘족',en:'Lanthanide',color:'#1a6b77'},
+    actinide:{ko:'악티늄족',en:'Actinide',color:'#512e5f'},
+    unknown:{ko:'미분류',en:'Unknown',color:'#424949'},
+  }
+},
+state:{
+  label:{ko:'상온 상태',en:'Physical State'},
+  getKey:e=>e[6],
+  palette:{
+    solid:{ko:'고체',en:'Solid',color:'#2471a3'},
+    liquid:{ko:'액체',en:'Liquid',color:'#c0392b'},
+    gas:{ko:'기체',en:'Gas',color:'#1e8449'},
+    synthetic:{ko:'인공합성',en:'Synthetic',color:'#5d6d7e'},
+  }
+},
+abundance:{
+  label:{ko:'지각 존재도',en:'Crustal Abundance'},
+  getKey:e=>{const p=e[10];if(p===0)return'none';if(p>=1000)return'high';if(p>=10)return'medium';if(p>=0.1)return'low';return'trace';},
+  palette:{
+    high:{ko:'풍부 (≥1000ppm)',en:'Abundant',color:'#1e8449'},
+    medium:{ko:'보통 (10~1000)',en:'Common',color:'#d4ac0d'},
+    low:{ko:'희귀 (0.1~10)',en:'Rare',color:'#c0392b'},
+    trace:{ko:'극미량 (<0.1)',en:'Trace',color:'#6c3483'},
+    none:{ko:'자연계 없음',en:'Not Natural',color:'#1a252f'},
+  }
+},
+discovery:{
+  label:{ko:'발견 시기',en:'Discovery Era'},
+  getKey:e=>{const y=e[11];if(y<=0)return'ancient';if(y<1800)return'pre1800';if(y<1900)return'c19';if(y<1950)return'early20';return'modern';},
+  palette:{
+    ancient:{ko:'고대',en:'Ancient',color:'#6e2f0a'},
+    pre1800:{ko:'~1800년',en:'Before 1800',color:'#7d6608'},
+    c19:{ko:'19세기',en:'19th Century',color:'#1e6b3a'},
+    early20:{ko:'20세기 전반',en:'Early 20th C.',color:'#1a5276'},
+    modern:{ko:'현대 (1950~)',en:'Modern (1950+)',color:'#512e5f'},
+  }
+},
+radioactive:{
+  label:{ko:'방사성 여부',en:'Radioactivity'},
+  getKey:e=>e[12]?'radio':'stable',
+  palette:{
+    stable:{ko:'안정',en:'Stable',color:'#1e6b3a'},
+    radio:{ko:'방사성',en:'Radioactive',color:'#922b21'},
+  }
+}};
+
+let currentColorMode='category';
+let focusedEl=1;
+
+function buildGridMap(){
+  const map={};
+  // Standard positions for elements with defined groups
+  ELEMENTS.forEach(e=>{
+    const num=e[0],grp=e[7],period=e[8];
+    if(grp!==null){map[num]={col:grp,row:period};}
+  });
+  // Lanthanides (58-71): row 9, cols 4-17
+  for(let n=58;n<=71;n++){map[n]={col:n-58+4,row:9};}
+  // Actinides (90-103): row 10, cols 4-17
+  for(let n=90;n<=103;n++){map[n]={col:n-90+4,row:10};}
+  // La(57) and Ac(89) appear in both standard AND series rows — show in series
+  map[57]={col:3,row:9};
+  map[89]={col:3,row:10};
+  // Lu(71) and Lr(103) have group=3 but belong in series
+  map[71]={col:17,row:9};
+  map[103]={col:17,row:10};
+  return map;
+}
+const gridMap=buildGridMap();
+
+function getCellColor(el){
+  const mode=COLOR_MODES[currentColorMode];
+  const key=mode.getKey(el);
+  return(mode.palette[key]||{color:'#2c3344'}).color;
+}
+
+function renderPeriodicTable(){
+  const grid=document.getElementById('pt-grid');
+  grid.innerHTML='';
+  const cells={};
+  ELEMENTS.forEach(e=>{
+    const pos=gridMap[e[0]];if(!pos)return;
+    if(!cells[pos.row])cells[pos.row]={};
+    cells[pos.row][pos.col]=e;
+  });
+  for(let row=1;row<=7;row++){
+    for(let col=1;col<=18;col++){
+      const el=cells[row]&&cells[row][col];
+      const div=document.createElement('div');
+      if(el){
+        div.className='pt-cell';div.dataset.num=el[0];
+        div.style.background=getCellColor(el);
+        div.innerHTML=`<span class="el-num">${el[0]}</span><span class="el-sym">${el[1]}</span><span class="el-name-sm">${lang==='ko'?el[2]:el[3]}</span>`;
+        div.addEventListener('mouseenter',()=>showElementInfo(el[0]));
+        div.addEventListener('dblclick',()=>searchElementInViewer(el[1]));
+        div.addEventListener('click',()=>{focusedEl=el[0];updateFocus();});
+      } else {div.className='pt-cell empty';}
+      grid.appendChild(div);
+    }
+  }
+  // separator
+  for(let col=1;col<=18;col++){const d=document.createElement('div');d.className='pt-cell empty';d.style.cssText='height:5px;aspect-ratio:unset';grid.appendChild(d);}
+  // lanthanide + actinide rows
+  for(let seriesRow=9;seriesRow<=10;seriesRow++){
+    for(let col=1;col<=18;col++){
+      const el=cells[seriesRow]&&cells[seriesRow][col];
+      const div=document.createElement('div');
+      if(el){
+        div.className='pt-cell';div.dataset.num=el[0];
+        div.style.background=getCellColor(el);
+        div.innerHTML=`<span class="el-num">${el[0]}</span><span class="el-sym">${el[1]}</span><span class="el-name-sm">${lang==='ko'?el[2]:el[3]}</span>`;
+        div.addEventListener('mouseenter',()=>showElementInfo(el[0]));
+        div.addEventListener('dblclick',()=>searchElementInViewer(el[1]));
+        div.addEventListener('click',()=>{focusedEl=el[0];updateFocus();});
+      } else {
+        div.className='pt-cell empty';
+        if(col===1){div.style.cssText='display:flex;align-items:center;justify-content:flex-end;padding-right:3px;font-size:7px;color:var(--text-mute);aspect-ratio:1';div.textContent=seriesRow===9?(lang==='ko'?'란':'Ln'):(lang==='ko'?'악':'Ac');}
+      }
+      grid.appendChild(div);
+    }
+  }
+  updateFocus();
+}
+
+function applyColorMode(){
+  currentColorMode=document.getElementById('color-mode-select').value;
+  document.querySelectorAll('.pt-cell[data-num]').forEach(div=>{
+    const el=elByNum[parseInt(div.dataset.num)];
+    if(el)div.style.background=getCellColor(el);
+  });
+  renderLegend();
+}
+
+function renderLegend(){
+  const mode=COLOR_MODES[currentColorMode];
+  document.getElementById('pt-legend').innerHTML=Object.entries(mode.palette).map(([k,v])=>
+    `<div class="legend-item"><div class="legend-dot" style="background:${v.color}"></div><span>${lang==='ko'?v.ko:v.en}</span></div>`).join('');
+}
+
+function showElementInfo(num){
+  const e=elByNum[num];if(!e)return;
+  focusedEl=num;updateFocus();
+  const[n,sym,nameKo,nameEn,mass,cat,state,grp,period,config,abund,disc,radio]=e;
+  const name=lang==='ko'?nameKo:nameEn;
+  const altName=lang==='ko'?nameEn:nameKo;
+  const catLabels={alkali:{ko:'알칼리 금속',en:'Alkali Metal'},alkaline:{ko:'알칼리 토금속',en:'Alkaline Earth'},transition:{ko:'전이 금속',en:'Transition Metal'},post:{ko:'전이 후 금속',en:'Post-Transition'},metalloid:{ko:'반금속',en:'Metalloid'},nonmetal:{ko:'비금속',en:'Nonmetal'},halogen:{ko:'할로겐',en:'Halogen'},noble:{ko:'비활성 기체',en:'Noble Gas'},lanthanide:{ko:'란타넘족',en:'Lanthanide'},actinide:{ko:'악티늄족',en:'Actinide'},unknown:{ko:'미분류',en:'Unknown'}};
+  const stateLabels={solid:{ko:'고체',en:'Solid'},liquid:{ko:'액체',en:'Liquid'},gas:{ko:'기체',en:'Gas'},synthetic:{ko:'인공합성',en:'Synthetic'}};
+  const catLabel=(catLabels[cat]||{ko:cat,en:cat})[lang];
+  const stateLabel=(stateLabels[state]||{ko:state,en:state})[lang];
+  const catColor=COLOR_MODES.category.palette[cat]?.color||'#444';
+  document.getElementById('el-info-placeholder').style.display='none';
+  const content=document.getElementById('el-info-content');
+  content.style.display='block';
+  content.innerHTML=`
+    <div style="background:${catColor}33;border-bottom:2px solid ${catColor}55;padding:18px 14px 10px;text-align:center">
+      <div style="font-family:var(--sans);font-size:56px;font-weight:800;color:#fff;line-height:1">${sym}</div>
+      <div style="font-family:var(--sans);font-size:15px;font-weight:600;color:${catColor===COLOR_MODES.category.palette.noble?.color?'#aed6f1':'#aef'};margin-top:3px;word-break:break-word">${name}</div>
+      <div style="font-size:9px;color:var(--text-dim);margin-top:1px">${altName}</div>
+    </div>
+    <div class="el-props">
+      ${prow(t('elNumber'),n)}
+      ${prow(t('elWeight'),mass+' amu','accent')}
+      ${prow(t('elCategory'),catLabel)}
+      ${prow(t('elState'),stateLabel)}
+      ${prow(t('elGroup'),grp||'—')}
+      ${prow(t('elPeriod'),period)}
+      ${prow(t('elConfig'),config)}
+      ${prow(t('elAbundance'),abund>0?abund+'ppm':(lang==='ko'?'자연계 없음':'Not Natural'))}
+      ${prow(t('elDiscovery'),disc>0?disc:(lang==='ko'?'고대':'Ancient'))}
+      ${prow(t('elRadioactive'),radio?(lang==='ko'?'예 ☢':'Yes ☢'):(lang==='ko'?'아니오':'No'))}
+    </div>
+    <button class="el-action-btn" onclick="searchElementInViewer('${sym}')">${t('goToViewer')} →</button>`;
+}
+function prow(k,v,cls=''){return`<div class="el-prop-row"><span class="el-prop-key">${k}</span><span class="el-prop-val ${cls}">${v}</span></div>`;}
+
+function searchElementInViewer(sym){
+  switchPage('mol');
+  if(currentMode!=='molecule')setMode('molecule');
+  document.getElementById('formula-input').value=sym;
+  searchMolecule(sym);
+}
+function updateFocus(){
+  document.querySelectorAll('.pt-cell.focused').forEach(d=>d.classList.remove('focused'));
+  const cell=document.querySelector(`.pt-cell[data-num="${focusedEl}"]`);
+  if(cell)cell.classList.add('focused');
+}
+document.getElementById('pt-grid').addEventListener('keydown',e=>{
+  const el=elByNum[focusedEl];if(!el)return;
+  const pos=gridMap[focusedEl];if(!pos)return;
+  let tgt=null;
+  if(e.key==='ArrowRight'){for(let n=focusedEl+1;n<=118;n++){const p=gridMap[n];if(p&&p.row===pos.row&&p.col>pos.col){tgt=n;break;}}}
+  else if(e.key==='ArrowLeft'){for(let n=focusedEl-1;n>=1;n--){const p=gridMap[n];if(p&&p.row===pos.row&&p.col<pos.col){tgt=n;break;}}}
+  else if(e.key==='ArrowDown'){const c=ELEMENTS.filter(e2=>{const p2=gridMap[e2[0]];return p2&&p2.row>pos.row&&p2.col===pos.col;}).sort((a,b)=>gridMap[a[0]].row-gridMap[b[0]].row);if(c.length)tgt=c[0][0];}
+  else if(e.key==='ArrowUp'){const c=ELEMENTS.filter(e2=>{const p2=gridMap[e2[0]];return p2&&p2.row<pos.row&&p2.col===pos.col;}).sort((a,b)=>gridMap[b[0]].row-gridMap[a[0]].row);if(c.length)tgt=c[0][0];}
+  else if(e.key==='Enter'){searchElementInViewer(el[1]);return;}
+  else return;
+  if(tgt){e.preventDefault();focusedEl=tgt;showElementInfo(tgt);const cell=document.querySelector(`.pt-cell[data-num="${tgt}"]`);if(cell)cell.scrollIntoView({block:'nearest',inline:'nearest'});}
+});
+
+// INIT
+applyI18n();
+renderPeriodicTable();
+renderLegend();
+updateRecentChips();
+renderHistoryList();
+</script>
+</body>
+</html>
